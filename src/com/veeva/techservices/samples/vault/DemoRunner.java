@@ -68,7 +68,7 @@ public class DemoRunner {
 		}
 	}
 
-	private static void orchestrateDemo() throws ClientProtocolException, IOException, JSONException {
+	private static void orchestrateDemo() throws IOException, JSONException {
 		DemoRunner runner = new DemoRunner();
 		String sessionId = runner.getVaultSessionId(VAULT_DNS, VAULT_USER_ID, VAULT_PASSWD);
 		int docId = runner.createSampleDocument(sessionId, null);
