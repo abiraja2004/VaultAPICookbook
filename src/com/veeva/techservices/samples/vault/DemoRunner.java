@@ -7,8 +7,10 @@
 package com.veeva.techservices.samples.vault;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -16,6 +18,7 @@ import java.util.List;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpRequest;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -31,6 +34,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
+import org.apache.http.util.EntityUtils;
 import org.apache.sling.commons.json.JSONException;
 import org.apache.sling.commons.json.JSONObject;
 
@@ -48,7 +53,7 @@ public class DemoRunner {
 	public static final long serialVersionUID = 1L;
 	public static String VAULT_DNS = "https://vv-consulting-medcommssandbox.veevavault.com";//REPLACE THIS WITH YOUR VAULT DNS
 	public static String VAULT_USER_ID = "murugesh.naidu@vv-consulting.com";//REPLACE THIS WITH YOUR USER ID
-	public static String VAULT_PASSWD = "REPLACETHISWITHPLAINTEXTPASSWORD";//REPLACE THIS WITH YOUR USER PASSWORD
+	public static String VAULT_PASSWD = "YAYAY";//REPLACE THIS WITH YOUR USER PASSWORD
 	public static String VAULT_VERSION = "v9.0";
 	public static String VAULT_SESSION_ID;
 	public static JSONObject VAULT_AUTHENTICATED_JSON;
@@ -71,6 +76,7 @@ public class DemoRunner {
 	private static void orchestrateDemo() throws IOException, JSONException {
 		DemoRunner runner = new DemoRunner();
 		String sessionId = runner.getVaultSessionId(VAULT_DNS, VAULT_USER_ID, VAULT_PASSWD);
+		runner.createVOFObjectInstance("response__c", "MuruTesterObject" + Math.random() * 100, sessionId);
 		int docId = runner.createSampleDocument(sessionId, null);
 		System.out.println("#######Id of created Document = " + docId);
 		JSONObject response = null;
@@ -158,7 +164,8 @@ public class DemoRunner {
 			HttpPost httppost = new HttpPost(VAULT_DNS
 					+ "/api/" + VAULT_VERSION + "/objects/documents");
 
-			FileBody bin = new FileBody(fileToCreate!=null? fileToCreate : new File("V-CVM v1.0.pptx"));
+//			FileBody bin = new FileBody(fileToCreate!=null? fileToCreate : new File("V-CVM v1.0.pptx"));
+			FileBody bin = new FileBody(fileToCreate!=null? fileToCreate : new File("lg.txt"));
 			StringBody type = new StringBody("Project Document",
 					ContentType.TEXT_PLAIN);
 			StringBody product = new StringBody("00P000000000102",
@@ -187,6 +194,7 @@ public class DemoRunner {
 			httppost.addHeader("Authorization", sessionId);
 			System.out
 					.println("executing request " + httppost.getRequestLine());
+			printEntity(reqEntity);
 			response = httpclient.execute(httppost);
 			BufferedReader bufferedReader = new BufferedReader(
 					new InputStreamReader(response.getEntity().getContent()));
@@ -211,6 +219,15 @@ public class DemoRunner {
 		return -1;//should never reach here
 	}
 
+	private void printEntity(HttpEntity entity) throws IOException{
+		ByteArrayOutputStream out = new java.io.ByteArrayOutputStream((int)entity.getContentLength());
+		entity.writeTo(out);
+		byte[] entityContentAsBytes = out.toByteArray();
+		// or convert to string
+		String entityContentAsString = new String(out.toByteArray());	
+		System.out.println(entityContentAsString);
+		return;
+	}
 
 	/**
 	 * Queries Vault Documents using vQL and returns <code>JSONObject</object> containing the response. You can use vQL to query any supported object (as listed in Vault Developer Site)
@@ -315,6 +332,51 @@ public class DemoRunner {
 			throws ClientProtocolException, IOException, JSONException {
 		String apiString = "/api/" + VAULT_VERSION + "/metadata/objects/documents/types/";
 		return doVaultGET(VAULT_DNS, apiString, sessionId, null);
+	}
+	
+	/**
+	 * Method to create a VOF Object instance
+	 * @param objectAPIName
+	 * @param objectInstanceName
+	 * @param sessionId
+	 * @return
+	 * @throws IllegalStateException
+	 * @throws IOException
+	 * @throws JSONException
+	 */
+	private String createVOFObjectInstance(String objectAPIName, String objectInstanceName, String sessionId) throws IllegalStateException, IOException, JSONException{
+
+		CloseableHttpClient httpclient = HttpClients.createDefault();
+		CloseableHttpResponse response = null;
+		HttpPost httppost = new HttpPost(VAULT_DNS
+				+ "/api/" + VAULT_VERSION + "/vobjects/" + objectAPIName);
+
+		List<NameValuePair> values = new ArrayList<NameValuePair>();
+		values.add(new BasicNameValuePair("name__v",objectInstanceName));		
+		@SuppressWarnings("deprecation")
+		HttpEntity reqEntity = new UrlEncodedFormEntity(values,HTTP.UTF_8);
+		httppost.setEntity(reqEntity);
+		httppost.addHeader("Authorization", sessionId);
+		System.out
+				.println("executing request " + httppost.getRequestLine());
+		printEntity(reqEntity);
+		response = httpclient.execute(httppost);
+		BufferedReader bufferedReader = new BufferedReader(
+				new InputStreamReader(response.getEntity().getContent()));
+		String line = "";
+		String objectURL = null;
+		{
+			JSONObject responseJson = null;
+			while ((line = bufferedReader.readLine()) != null) {
+				responseJson = new JSONObject(line);
+			}
+			System.out.println(responseJson);
+			String responseStatus = (String) responseJson.get("responseStatus");	
+			if (null != responseStatus && responseStatus.equals("SUCCESS")) {
+				objectURL = (String) responseJson.getJSONObject("data").get("url");
+			}
+			return objectURL;
+		}
 	}
 
 }
