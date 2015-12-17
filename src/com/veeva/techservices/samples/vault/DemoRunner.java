@@ -57,7 +57,8 @@ public class DemoRunner {
 	public static String VAULT_VERSION = "v9.0";
 	public static String VAULT_SESSION_ID;
 	public static JSONObject VAULT_AUTHENTICATED_JSON;
-
+	public static JSONObject VAULT_AUTHENTICATED_JSON1;
+     
 	/**
 	 * @param args
 	 */
